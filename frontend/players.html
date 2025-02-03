@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Players</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+
+        h2 {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .data-section, .form-section {
+            background: #fff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .data-item {
+            background: #e2e2e2;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="data-section">
+            <h2>Players</h2>
+            <div id="playersList" class="data-grid"></div>
+        </div>
+
+        <div class="form-section">
+            <h2>Track Player Performance</h2>
+            <form id="trackPerformanceForm">
+                <div class="form-group">
+                    <label>Player</label>
+                    <select name="playerId" id="playerSelect" required>
+                        <option value="">Select Player</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Performance</label>
+                    <input name="performance" required>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" required></textarea>
+                </div>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const LeagueSystem = {
+            init() {
+                if (!localStorage.getItem('leagueData')) {
+                    localStorage.setItem('leagueData', JSON.stringify({
+                        teams: [],
+                        players: [],
+                        matches: [],
+                        performances: []
+                    }));
+                }
+                this.updateDashboard();
+                this.updateTeamSelects();
+                this.updatePlayerSelects();
+                this.displayAllData();
+            },
+
+            getData() {
+                return JSON.parse(localStorage.getItem('leagueData'));
+            },
+
+            saveData(data) {
+                localStorage.setItem('leagueData', JSON.stringify(data));
+            },
+
+            addTeam(teamData) {
+                const data = this.getData();
+                teamData.id = Date.now();
+                data.teams.push(teamData);
+                this.saveData(data);
+                this.updateDashboard();
+                this.updateTeamSelects();
+                this.displayAllData();
+            },
+
+            addPlayer(playerData) {
+                const data = this.getData();
+                playerData.id = Date.now();
+                data.players.push(playerData);
+                this.saveData(data);
+                this.updateDashboard();
+                this.updatePlayerSelects();
+                this.displayAllData();
+            },
+
+            addMatch(matchData) {
+                const data = this.getData();
+                matchData.id = Date.now();
+                matchData.status = 'scheduled';
+                data.matches.push(matchData);
+                this.saveData(data);
+                this.updateDashboard();
+                this.displayAllData();
+            },
+
+            addPerformance(performanceData) {
+                const data = this.getData();
+                performanceData.id = Date.now();
+                data.performances.push(performanceData);
+                this.saveData(data);
+                this.displayAllData();
+                this.sendEmail(performanceData);
+            },
+
+            updateDashboard() {
+                const data = this.getData();
+                document.getElementById('totalTeams').textContent = data.teams.length;
+                document.getElementById('activePlayers').textContent = data.players.length;
+                document.getElementById('upcomingMatches').textContent = 
+                    data.matches.filter(m => m.status === 'scheduled').length;
+            },
+
+            updateTeamSelects() {
+                const data = this.getData();
+                const teamOptions = data.teams.map(team => 
+                    `<option value="${team.id}">${team.name}</option>`
+                ).join('');
+
+                document.getElementById('teamSelect').innerHTML = 
+                    '<option value="">Select Team</option>' + teamOptions;
+                document.getElementById('homeTeamSelect').innerHTML = 
+                    '<option value="">Select Team</option>' + teamOptions;
+                document.getElementById('awayTeamSelect').innerHTML = 
+                    '<option value="">Select Team</option>' + teamOptions;
+            },
+
+            updatePlayerSelects() {
+                const data = this.getData();
+                const playerOptions = data.players.map(player => 
+                    `<option value="${player.id}">${player.name}</option>`
+                ).join('');
+
+                document.getElementById('playerSelect').innerHTML = 
+                    '<option value="">Select Player</option>' + playerOptions;
+            },
+
+            displayAllData() {
+                const data = this.getData();
+                
+                // Display Teams
+                document.getElementById('teamsList').innerHTML = data.teams
+                    .map(team => `
+                        <div class="data-item">
+                            <strong>${team.name}</strong> - Coach: ${team.coachName}
+                        </div>
+                    `).join('');
+
+                // Display Players
+                document.getElementById('playersList').innerHTML = data.players
+                    .map(player => {
+                        const team = data.teams.find(t => t.id === parseInt(player.teamId));
+                        return `
+                            <div class="data-item">
+                                <strong>${player.name}</strong> - Team: ${team ? team.name : 'Unknown'} - Coach: ${team ? team.coachName : 'Unknown'}
+                            </div>
+                        `;
+                    }).join('');
+
+                // Display Matches
+                document.getElementById('matchesList').innerHTML = data.matches
+                    .map(match => {
+                        const homeTeam = data.teams.find(t => t.id === parseInt(match.homeTeam));
+                        const awayTeam = data.teams.find(t => t.id === parseInt(match.awayTeam));
+                        return `
+                            <div class="data-item">
+                                <strong>${homeTeam ? homeTeam.name : 'Unknown'}</strong> vs 
+                                <strong>${awayTeam ? awayTeam.name : 'Unknown'}</strong>
+                                <br>
+                                Date: ${new Date(match.matchDate).toLocaleString()}
+                            </div>
+                        `;
+                    }).join('');
+            },
+
+            sendEmail(performanceData) {
+                const data = this.getData();
+                const player = data.players.find(p => p.id === parseInt(performanceData.playerId));
+                const team = data.teams.find(t => t.id === parseInt(player.teamId));
+                const emailBody = `
+                    Player: ${player.name}
+                    Team: ${team.name}
+                    Coach: ${team.coachName}
+                    Performance: ${performanceData.performance}
+                    Notes: ${performanceData.notes}
+                `;
+
+                fetch('http://localhost:3000/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: player.email, // Assuming you have the player's email stored
+                        subject: 'Performance Update',
+                        text: emailBody
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Email sent:', data);
+                })
+                .catch(error => {
+                    console.error('Error sending email:', error);
+                });
+            }
+        };
+
+        // Initialize the system
+        LeagueSystem.init();
+
+        // Add event listeners
+        document.getElementById('addTeamForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            LeagueSystem.addTeam({
+                name: e.target.teamName.value,
+                coachName: e.target.coachName.value
+            });
+            e.target.reset();
+        });
+
+        document.getElementById('addPlayerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            LeagueSystem.addPlayer({
+                name: e.target.playerName.value,
+                teamId: e.target.teamId.value,
+                email: e.target.email.value // Add email field
+            });
+            e.target.reset();
+        });
+
+        document.getElementById('addMatchForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            LeagueSystem.addMatch({
+                homeTeam: e.target.homeTeam.value,
+                awayTeam: e.target.awayTeam.value,
+                matchDate: e.target.matchDate.value
+            });
+            e.target.reset();
+        });
+
+        document.getElementById('trackPerformanceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            LeagueSystem.addPerformance({
+                playerId: e.target.playerId.value,
+                performance: e.target.performance.value,
+                notes: e.target.notes.value
+            });
+            e.target.reset();
+        });
+    </script>
+</body>
+</html>
